@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        #quiz-container {
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .list-group-item {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .list-group-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .list-group-item.correct {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .list-group-item.incorrect {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        .list-group-item.selected {
+            font-weight: bold;
+        }
+
+        .result-card {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        #next-btn {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div id="quiz-container" class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="text-center" id="quiz-title">Quiz App</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="start-screen" class="text-center">
+                            <h3>Test Your Knowledge</h3>
+                            <p>This quiz contains multiple choice questions. Try to answer them all!</p>
+                            <button id="start-btn" class="btn btn-primary btn-lg">Start Quiz</button>
+                        </div>
+                        
+                        <div id="quiz-screen" class="d-none">
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="badge bg-info">Question <span id="question-number">1</span>/<span id="total-questions">5</span></span>
+                                <span class="badge bg-primary">Score: <span id="current-score">0</span></span>
+                            </div>
+                            <h4 id="question-text" class="mb-4">Question goes here</h4>
+                            <div id="options-container" class="list-group mb-4">
+                            </div>
+                            <button id="next-btn" class="btn btn-primary">Next Question</button>
+                        </div>
+                        
+                        <div id="results-screen" class="d-none text-center">
+                            <h3>Quiz Completed!</h3>
+                            <div class="result-card mb-4">
+                                <p>Your final score is:</p>
+                                <h2 class="display-4"><span id="final-score">0</span>/<span id="max-score">5</span></h2>
+                                <p id="result-message" class="lead">Good job!</p>
+                            </div>
+                            <button id="retake-btn" class="btn btn-primary">Retake Quiz</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const startScreen = document.getElementById('start-screen');
+            const quizScreen = document.getElementById('quiz-screen');
+            const resultsScreen = document.getElementById('results-screen');
+            const startBtn = document.getElementById('start-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const retakeBtn = document.getElementById('retake-btn');
+            const questionText = document.getElementById('question-text');
+            const optionsContainer = document.getElementById('options-container');
+            const questionNumber = document.getElementById('question-number');
+            const totalQuestions = document.getElementById('total-questions');
+            const currentScore = document.getElementById('current-score');
+            const finalScore = document.getElementById('final-score');
+            const maxScore = document.getElementById('max-score');
+            const resultMessage = document.getElementById('result-message');
+
+            const quizQuestions = [
+                {
+                    question: "What is the capital of France?",
+                    options: ["London", "Berlin", "Paris", "Madrid"],
+                    correctAnswer: 2
+                },
+                {
+                    question: "Which language runs in a web browser?",
+                    options: ["Java", "C", "Python", "JavaScript"],
+                    correctAnswer: 3
+                },
+                {
+                    question: "What does CSS stand for?",
+                    options: [
+                        "Central Style Sheets",
+                        "Cascading Style Sheets",
+                        "Cascading Simple Sheets",
+                        "Cars SUVs Sailboats"
+                    ],
+                    correctAnswer: 1
+                },
+                {
+                    question: "What year was JavaScript launched?",
+                    options: ["1996", "1995", "1994", "All of the above"],
+                    correctAnswer: 1
+                },
+                {
+                    question: "Which of these is a JavaScript framework?",
+                    options: ["Django", "Flask", "React", "Laravel"],
+                    correctAnswer: 2
+                }
+            ];
+
+            let currentQuestionIndex = 0;
+            let score = 0;
+            let selectedOption = null;
+            let quizCompleted = false;
+
+            function initQuiz() {
+                totalQuestions.textContent = quizQuestions.length;
+                maxScore.textContent = quizQuestions.length;
+                startScreen.classList.remove('d-none');
+                quizScreen.classList.add('d-none');
+                resultsScreen.classList.add('d-none');
+            }
+
+            startBtn.addEventListener('click', function() {
+                startScreen.classList.add('d-none');
+                quizScreen.classList.remove('d-none');
+                currentQuestionIndex = 0;
+                score = 0;
+                loadQuestion(currentQuestionIndex);
+            });
+
+            function loadQuestion(index) {
+                if (index >= quizQuestions.length) {
+                    showResults();
+                    return;
+                }
+
+                const question = quizQuestions[index];
+                questionText.textContent = question.question;
+                questionNumber.textContent = index + 1;
+                currentScore.textContent = score;
+
+                optionsContainer.innerHTML = '';
+
+                question.options.forEach((option, i) => {
+                    const optionElement = document.createElement('button');
+                    optionElement.className = 'list-group-item list-group-item-action';
+                    optionElement.textContent = option;
+                    optionElement.dataset.index = i;
+                    optionElement.addEventListener('click', selectOption);
+                    optionsContainer.appendChild(optionElement);
+                });
+
+                nextBtn.style.display = 'none';
+                selectedOption = null;
+            }
+
+            function selectOption(e) {
+                if (quizCompleted) return;
+
+                const selectedElement = e.target;
+                const selectedIndex = parseInt(selectedElement.dataset.index);
+                const question = quizQuestions[currentQuestionIndex];
+
+                const options = optionsContainer.querySelectorAll('.list-group-item');
+                options.forEach(option => {
+                    option.classList.remove('selected', 'correct', 'incorrect');
+                });
+
+                selectedElement.classList.add('selected');
+                selectedOption = selectedIndex;
+
+                const isCorrect = selectedIndex === question.correctAnswer;
+
+                options.forEach((option, i) => {
+                    if (i === question.correctAnswer) {
+                        option.classList.add('correct');
+                    } else if (i === selectedIndex && !isCorrect) {
+                        option.classList.add('incorrect');
+                    }
+                });
+
+                if (isCorrect) {
+                    score++;
+                    currentScore.textContent = score;
+                }
+
+                nextBtn.style.display = 'block';
+            }
+
+            nextBtn.addEventListener('click', function() {
+                currentQuestionIndex++;
+                loadQuestion(currentQuestionIndex);
+            });
+
+            function showResults() {
+                quizScreen.classList.add('d-none');
+                resultsScreen.classList.remove('d-none');
+                finalScore.textContent = score;
+                
+                const percentage = (score / quizQuestions.length) * 100;
+                
+                if (percentage >= 80) {
+                    resultMessage.textContent = "Excellent! You're a quiz master!";
+                } else if (percentage >= 60) {
+                    resultMessage.textContent = "Good job! You know your stuff!";
+                } else if (percentage >= 40) {
+                    resultMessage.textContent = "Not bad! Keep learning!";
+                } else {
+                    resultMessage.textContent = "Keep practicing! You'll get better!";
+                }
+                
+                quizCompleted = true;
+            }
+
+            retakeBtn.addEventListener('click', function() {
+                resultsScreen.classList.add('d-none');
+                startScreen.classList.remove('d-none');
+                quizCompleted = false;
+            });
+
+            initQuiz();
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
