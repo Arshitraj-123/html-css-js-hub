@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>React Task Manager</title>
+  <style>
+    /* Reset and base */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 20px 10px 40px;
+    }
+    #root {
+      width: 100%;
+      max-width: 360px;
+      background: #2a2141e6;
+      border-radius: 12px;
+      padding: 20px 20px 30px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      max-height: 600px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 15px;
+      font-weight: 700;
+      font-size: 1.8rem;
+      letter-spacing: 1.4px;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+    }
+    .add-task {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .add-task input {
+      flex-grow: 1;
+      padding: 12px 15px;
+      border-radius: 30px;
+      border: none;
+      font-size: 1rem;
+      outline: none;
+      box-shadow: inset 2px 2px 5px rgba(0,0,0,0.3);
+    }
+    .add-task button {
+      background: #ff6b6b;
+      border: none;
+      border-radius: 30px;
+      color: white;
+      font-weight: bold;
+      padding: 12px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px #ff6b6baa;
+      transition: background-color 0.3s ease;
+    }
+    .add-task button:disabled {
+      background: #a04f4f;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .add-task button:hover:not(:disabled) {
+      background: #ff5252;
+      box-shadow: 0 6px 15px #ff5252cc;
+    }
+    ul.task-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      flex-grow: 1;
+      max-height: 440px;
+    }
+    ul.task-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    ul.task-list::-webkit-scrollbar-thumb {
+      background-color: #764ba2aa;
+      border-radius: 3px;
+    }
+    li.task-item {
+      background: #3c3278d9;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: background-color 0.3s ease;
+    }
+    li.task-item.completed {
+      background: #4a6f4bd9;
+      text-decoration: line-through;
+      color: #c1d9c1;
+    }
+    li.task-item:hover {
+      background: #5c4db3ea;
+    }
+    .task-checkbox {
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      flex-shrink: 0;
+      accent-color: #ff6b6b;
+    }
+    .task-text {
+      flex-grow: 1;
+      font-size: 1rem;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: transparent;
+      display: inline-block;
+      color: inherit;
+      outline: none;
+      user-select: text;
+      word-break: break-word;
+      border: 2px solid transparent;
+      transition: border-color 0.2s ease;
+      min-height: 1.2em;
+    }
+    .task-text[contenteditable="true"] {
+      border-color: #ff6b6b;
+      background: #4d417585;
+      box-shadow: inset 1px 1px 6px #ff6b6b99;
+    }
+    .task-text:empty:before {
+      content: attr(data-placeholder);
+      color: #ccc;
+      pointer-events: none;
+      user-select: none;
+    }
+    button.delete-btn {
+      background: transparent;
+      border: none;
+      color: #ff4f4f;
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: background-color 0.3s ease;
+      flex-shrink: 0;
+      user-select: none;
+      line-height: 1;
+    }
+    button.delete-btn:hover {
+      background: #ff4f4faa;
+      color: white;
+    }
+    @media (max-width: 400px) {
+      #root {
+        padding: 16px 16px 24px;
+      }
+      .add-task input {
+        font-size: 0.95rem;
+        padding: 10px 12px;
+      }
+      .add-task button {
+        font-size: 0.95rem;
+        padding: 10px 16px;
+      }
+      li.task-item {
+        padding: 8px 10px;
+      }
+      .task-text {
+        font-size: 0.95rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <!-- React and ReactDOM prod versions from unpkg -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <script>
+    const { useState, useEffect } = React;
+
+    function TaskManager() {
+      const [tasks, setTasks] = useState(() => {
+        try {
+          const saved = localStorage.getItem('tasks');
+          return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+          return [];
+        }
+      });
+      const [newTaskText, setNewTaskText] = useState('');
+
+      useEffect(() => {
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+      }, [tasks]);
+
+      function addTask() {
+        if (!newTaskText.trim()) return;
+        const newTask = {
+          id: Date.now(),
+          text: newTaskText.trim(),
+          completed: false,
+        };
+        setTasks([newTask, ...tasks]);
+        setNewTaskText('');
+      }
+
+      function toggleCompleted(id) {
+        setTasks(tasks.map(task => task.id === id ? {...task, completed: !task.completed} : task));
+      }
+
+      function deleteTask(id) {
+        setTasks(tasks.filter(task => task.id !== id));
+      }
+
+      function updateTaskText(id, newText) {
+        if(!newText.trim()){
+          return;
+        }
+        setTasks(tasks.map(task => task.id === id ? {...task, text: newText.trim()} : task));
+      }
+
+      function handleNewTaskKeyDown(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addTask();
+        }
+      }
+
+      function handleTaskEdit(e, id) {
+        const newText = e.target.innerText;
+        if (!newText.trim()) {
+          deleteTask(id);
+        } else {
+          updateTaskText(id, newText);
+        }
+      }
+
+      function handleTaskKeyDown(e, id) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.target.blur();
+        }
+      }
+
+      return (
+        React.createElement("div", {className: "task-manager"},
+          React.createElement("h1", null, "Task Manager"),
+          React.createElement("div", {className: "add-task"},
+            React.createElement("input", {
+              type: "text",
+              placeholder: "Add new task...",
+              value: newTaskText,
+              onChange: e => setNewTaskText(e.target.value),
+              onKeyDown: handleNewTaskKeyDown,
+              "aria-label": "Add new task",
+              autoComplete: "off",
+              spellCheck: "false"
+            }),
+            React.createElement("button", {
+              onClick: addTask,
+              disabled: !newTaskText.trim(),
+              "aria-label": "Add task",
+              title: "Add task"
+            }, "Add")
+          ),
+          tasks.length === 0
+            ? React.createElement("p", {
+                style: {textAlign:'center', color:'#ccc', userSelect:'none'}
+              }, "No tasks yet. Add one above!")
+            : React.createElement("ul", {
+                className: "task-list",
+                role: "list"
+              },
+              tasks.map(task =>
+                React.createElement("li", {
+                  key: task.id,
+                  className: "task-item" + (task.completed ? " completed" : ""),
+                  "aria-label": task.text + (task.completed ? ", completed" : "")
+                },
+                  React.createElement("input", {
+                    type: "checkbox",
+                    className: "task-checkbox",
+                    checked: task.completed,
+                    onChange: () => toggleCompleted(task.id),
+                    "aria-label": "Mark task '"+task.text+"' as completed"
+                  }),
+                  React.createElement("span", {
+                    className: "task-text",
+                    contentEditable: !task.completed,
+                    suppressContentEditableWarning: true,
+                    onBlur: e => handleTaskEdit(e, task.id),
+                    onKeyDown: e => handleTaskKeyDown(e, task.id),
+                    "data-placeholder": "Edit task",
+                    role: "textbox",
+                    "aria-multiline": "true",
+                    tabIndex: task.completed ? -1 : 0
+                  }, task.text),
+                  React.createElement("button", {
+                    className: "delete-btn",
+                    onClick: () => deleteTask(task.id),
+                    "aria-label": "Delete task '"+task.text+"'",
+                    title: "Delete task"
+                  }, "\u00D7")
+                )
+              )
+            )
+        )
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(TaskManager));
+  </script>
+</body>
+</html>
+
