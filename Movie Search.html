@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Movie Search App</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap');
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+    color: #ecf0f1;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+  }
+  header {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: #f1c40f;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+  }
+  form {
+    display: flex;
+    width: 100%;
+    max-width: 350px;
+    margin-bottom: 1rem;
+  }
+  input[type="search"] {
+    flex-grow: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 40px 0 0 40px;
+    font-size: 1.1rem;
+    outline: none;
+  }
+  button {
+    background: #f1c40f;
+    color: #2c3e50;
+    border: none;
+    border-radius: 0 40px 40px 0;
+    padding: 0 1.5rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  button:hover {
+    background: #d4ac0d;
+  }
+  #movie-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    width: 100%;
+    max-width: 700px;
+  }
+  .movie-card {
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 10px rgba(241, 196, 15, 0.6);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease;
+  }
+  .movie-card:hover {
+    transform: scale(1.05);
+  }
+  .movie-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+  }
+  .movie-title {
+    padding: 0.5rem;
+    font-weight: 600;
+    font-size: 1rem;
+    text-align: center;
+    min-height: 45px;
+  }
+  #movie-details {
+    margin-top: 1.5rem;
+    width: 100%;
+    max-width: 700px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 15px;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 0 15px rgba(241, 196, 15, 0.8);
+  }
+  #movie-details h2 {
+    margin-top: 0;
+    color: #f1c40f;
+    text-align: center;
+  }
+  #movie-details .details-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+  }
+  #movie-details img {
+    max-width: 250px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px #f1c40f;
+  }
+  #movie-details .info {
+    flex: 1 1 300px;
+    color: #ecf0f1;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  #movie-details .info p {
+    margin: 0.3rem 0;
+  }
+  #message {
+    margin-top: 1rem;
+    font-size: 1rem;
+    color: #f39c12;
+    text-align: center;
+    min-height: 1.5em;
+  }
+
+  @media (max-width: 600px) {
+    body {
+      padding: 0.5rem;
+    }
+    form {
+      max-width: 100%;
+    }
+    .movie-card img {
+      height: 140px;
+    }
+    #movie-details .details-container {
+      flex-direction: column;
+      align-items: center;
+    }
+    #movie-details img {
+      max-width: 90vw;
+      margin-bottom: 1rem;
+    }
+  }
+</style>
+</head>
+<body>
+<header>Movie Search App</header>
+<form id="search-form" autocomplete="off" role="search" aria-label="Movie Search Form">
+  <input type="search" id="search-input" name="search" placeholder="Search movies by title..." aria-label="Search movies by title" required minlength="2" />
+  <button type="submit" aria-label="Search movies">Search</button>
+</form>
+<div id="message" role="alert" aria-live="polite"></div>
+<div id="movie-list" aria-live="polite" aria-label="Search results"></div>
+<div id="movie-details" aria-live="polite"></div>
+
+<script>
+  (() => {
+    const apiKey = 'thewdb'; // Demo OMDb API key (limited requests)
+    const form = document.getElementById('search-form');
+    const input = document.getElementById('search-input');
+    const movieList = document.getElementById('movie-list');
+    const movieDetails = document.getElementById('movie-details');
+    const message = document.getElementById('message');
+
+    function clearUI() {
+      movieList.innerHTML = '';
+      movieDetails.innerHTML = '';
+      message.textContent = '';
+    }
+
+    function showMessage(msg, isError = false) {
+      message.textContent = msg;
+      message.style.color = isError ? '#e74c3c' : '#f39c12';
+    }
+
+    async function searchMovies(title) {
+      clearUI();
+      showMessage('Searching movies...');
+      try {
+        const res = await fetch(`https://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(title)}&type=movie`);
+        const data = await res.json();
+        if (data.Response === "True") {
+          showMessage(`${data.Search.length} result${data.Search.length > 1 ? 's' : ''} found`);
+          displayMovieList(data.Search);
+        } else {
+          showMessage(data.Error || 'No movies found', true);
+        }
+      } catch (error) {
+        showMessage('Failed to fetch movies. Please try again later.', true);
+      }
+    }
+
+    function displayMovieList(movies) {
+      movieList.innerHTML = '';
+      movies.forEach(movie => {
+        const card = document.createElement('div');
+        card.className = 'movie-card';
+        card.tabIndex = 0;
+        card.setAttribute('role', 'button');
+        card.setAttribute('aria-label', `View details for ${movie.Title} (${movie.Year})`);
+
+        const poster = movie.Poster !== "N/A" ? movie.Poster : 'https://via.placeholder.com/300x450?text=No+Image';
+        card.innerHTML = `
+          <img src="${poster}" alt="${movie.Title} Poster" loading="lazy" />
+          <div class="movie-title">${movie.Title} (${movie.Year})</div>
+        `;
+        card.addEventListener('click', () => showMovieDetails(movie.imdbID));
+        card.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            showMovieDetails(movie.imdbID);
+          }
+        });
+        movieList.appendChild(card);
+      });
+    }
+
+    async function showMovieDetails(imdbID) {
+      movieDetails.innerHTML = '';
+      showMessage('Loading movie details...');
+      try {
+        const res = await fetch(`https://www.omdbapi.com/?apikey=${apiKey}&i=${imdbID}&plot=full`);
+        const data = await res.json();
+        if (data.Response === "True") {
+          showMessage('');
+          displayMovieDetails(data);
+          // Scroll to details section
+          movieDetails.scrollIntoView({behavior: 'smooth'});
+        } else {
+          showMessage(data.Error || 'Unable to fetch movie details', true);
+        }
+      } catch (error) {
+        showMessage('Failed to fetch movie details. Please try again later.', true);
+      }
+    }
+
+    function displayMovieDetails(movie) {
+      const poster = movie.Poster !== "N/A" ? movie.Poster : 'https://via.placeholder.com/300x450?text=No+Image';
+
+      movieDetails.innerHTML = `
+        <h2>${movie.Title} (${movie.Year})</h2>
+        <div class="details-container">
+          <img src="${poster}" alt="${movie.Title} Poster" loading="lazy" />
+          <div class="info">
+            <p><strong>Genre:</strong> ${movie.Genre}</p>
+            <p><strong>Director:</strong> ${movie.Director}</p>
+            <p><strong>Actors:</strong> ${movie.Actors}</p>
+            <p><strong>Runtime:</strong> ${movie.Runtime}</p>
+            <p><strong>Plot:</strong> ${movie.Plot}</p>
+            <p><strong>IMDb Rating:</strong> ${movie.imdbRating}</p>
+            <p><strong>Awards:</strong> ${movie.Awards}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const query = input.value.trim();
+      if (query.length < 2) {
+        showMessage('Please enter at least 2 characters to search.', true);
+        return;
+      }
+      searchMovies(query);
+    });
+  })();
+</script>
+</body>
+</html>
+
